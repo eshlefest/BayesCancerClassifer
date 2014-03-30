@@ -14,7 +14,7 @@ class BinnedProbability extends FeatureProbability
 {
     ArrayList<Double> data = new ArrayList<Double>();
     int numBins = 10;
-    int bins[] = new int[numBins];
+    int bins[]; 
     double interval;
     private boolean clean = true;
     
@@ -24,9 +24,19 @@ class BinnedProbability extends FeatureProbability
             bins[i] = 0;
         
     }
+    
+    public BinnedProbability(int numBins) {
+        bins = new int[numBins];
+        for(int i = 0; i < numBins; i++)
+            bins[i] = 0;
+        this.numBins = numBins;
+        
+    }
 
     @Override
     public double getProbability(double d) {
+        if(!active)return 1;
+        
         if(!clean)binData();
         int inputBin = (int)(d/interval);
         if(inputBin > numBins - 1) inputBin = numBins - 1;

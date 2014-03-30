@@ -33,6 +33,8 @@ public class GaussianProbability extends FeatureProbability {
     
     @Override
     public double getProbability(double d) {
+        if(!active)return 1;
+        
         if(!clean)computeValues();
         //System.out.println("standardDEviation: " + standardDeviation);
         return computeProbability(d,mean,standardDeviation);

@@ -33,7 +33,8 @@ class Classifier
     FeatureProbability negProbs[];
     boolean cleanData,initializedArrays;
     boolean useGaussian;
-    int numPos=0,numNeg=0;
+    int numPos=0,numNeg=0, binSize;
+    ProbabilityOptions options;
     
     //default constructor uses bins
     public Classifier()
@@ -41,6 +42,17 @@ class Classifier
         initializedArrays = false;
         useGaussian = false;
     }
+    
+    public Classifier(ProbabilityOptions options)
+    {
+        this.options = options;
+        binSize = options.binSize;
+        this.useGaussian = options.useGaussian;
+        if(options.isCustom)initCustom(options);
+        if(options.selectedAttributes)selectAttributes(options.selectAttributes);
+        
+        
+    }        
     
     //user can specify gaussian distribution or bins
     public Classifier(boolean gaus)
@@ -50,35 +62,64 @@ class Classifier
     }
     
     //custom initialization
-    public Classifier(boolean custom[])
-    {
-        posProbs = new FeatureProbability[custom.length];
-        negProbs = new FeatureProbability[custom.length];
-        
-        for(int i = 0; i<custom.length; i++)
-        {
-        posProbs[i] = (custom[i]?new GaussianProbability():new BinnedProbability());
-        negProbs[i] = (custom[i]?new GaussianProbability():new BinnedProbability());
-        }    
-        initializedArrays = true;    
-    }        
+    //public Classifier(ProbabilityOptions options)
+    //{
+    //    initCustom(options);    
+    //}        
     
     //again, defaults to bins
     public Classifier(double[][] data) 
     {
         
         useGaussian = false;
-        initializeArrays(data[1]);
+        initializeArrays(data[1].length);
         
         
         for(double[] d : data)
             addData(d);
     }
-
+    
+    /**
+     * This initializes the array of FeatureProbabilites based on the
+     * custom array in the options object
+     * @param custom 
+     */
+    
+    public void initCustom(ProbabilityOptions options)
+    {        
+        boolean custom[] = options.custom;
+        int binSize = options.binSize;
+        
+        posProbs = new FeatureProbability[custom.length];
+        negProbs = new FeatureProbability[custom.length];
+        
+        for(int i = 0; i<custom.length; i++)
+        {
+        posProbs[i] = (custom[i]?new GaussianProbability():new BinnedProbability(binSize));
+        negProbs[i] = (custom[i]?new GaussianProbability():new BinnedProbability(binSize));
+        }    
+        initializedArrays = true;
+    }
+    
+    public void selectAttributes(boolean selected[])
+    {
+        
+        
+        if(!initializedArrays)initializeArrays(selected.length);
+        for(int i = 0; i < selected.length;i++)
+        {
+            if(!selected[i])
+            {
+                posProbs[i].deactivate();
+                negProbs[i].deactivate();
+            }            
+        }    
+    }        
+    
     public void addData(double[] d)
     {
         if(!initializedArrays)
-            initializeArrays(d);
+            initializeArrays(d.length);
         
         if(d[1]==1)
         {    
@@ -122,15 +163,16 @@ class Classifier
             
     }
 
-    private void initializeArrays(double[] d) 
+    private void initializeArrays(int length) 
     {
-        posProbs = new FeatureProbability[d.length];
-        negProbs = new FeatureProbability[d.length];
         
-        for(int i = 0; i<d.length; i++)
+        posProbs = new FeatureProbability[length];
+        negProbs = new FeatureProbability[length];
+        
+        for(int i = 0; i<length; i++)
         {
-        posProbs[i] = (useGaussian?new GaussianProbability():new BinnedProbability());
-        negProbs[i] = (useGaussian?new GaussianProbability():new BinnedProbability());
+        posProbs[i] = (useGaussian?new GaussianProbability():new BinnedProbability(binSize));
+        negProbs[i] = (useGaussian?new GaussianProbability():new BinnedProbability(binSize));
         }    
         initializedArrays = true;
     }

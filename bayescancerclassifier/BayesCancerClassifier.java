@@ -26,8 +26,7 @@ public class BayesCancerClassifier {
         int NUM_DATA_POINTS = 569;
         int NUM_FEATURES = 32;
         int DEGREE_OF_VALIDATION = 10;
-        Classifier1 classifier;
-        Classifier classifierGaussian;
+        Classifier classifier;
         double fScore;
         
         double data[][] = new double[NUM_DATA_POINTS][NUM_FEATURES];
@@ -36,21 +35,39 @@ public class BayesCancerClassifier {
         
         readData(data,fileAddress);
                     
-        classifierGaussian = new Classifier(data);
+        classifier = new Classifier(data);
 
         boolean custom[] = new boolean[32];
+        boolean selected[] = new boolean[32];
         
         for(int i = 0; i < custom.length; i++)
-            custom[i] = true;
+        {
+            selected[i] = custom[i] = true;
+        }    
+            
+        
+        
         
         custom[8] = false;
         custom[15] = false;
-        custom[12] = false;
-        custom[14] = false;
+       // custom[12] = false;
+        //custom[14] = false;
         //custom[9] = false;
         //custom[10] = false;
-        fScore = kFoldValidation(data,DEGREE_OF_VALIDATION,custom);
-        System.out.printf("After %d fold validation, f1-score=%f\n",DEGREE_OF_VALIDATION,fScore);
+        ProbabilityOptions options = new ProbabilityOptions();
+        options.setCustom(custom);
+        options.setBinSize(7);
+        kFoldValidation(data,DEGREE_OF_VALIDATION,options);
+        //System.out.printf("After %d fold validation, f1-score=%f\n\n\n",DEGREE_OF_VALIDATION,fScore);
+        
+        options.reset();
+        options.useGaussian = true;
+        selected[5] = false;
+        selected[10] = false;
+        options.setSelected(selected);
+        //kFoldValidation(data,DEGREE_OF_VALIDATION,options);
+        
+        //System.out.printf("After %d fold validation, f1-score=%f\n",DEGREE_OF_VALIDATION,fScore);
             
         
     }
@@ -85,76 +102,73 @@ public class BayesCancerClassifier {
         }
         
     }
-    
-    
-    public static double kFoldValidation(double data[][],int k,boolean custom[])
-    {
-        int interval = data.length / k;
-        //System.out.println(interval);
-        ArrayList<ArrayList<double[]>> partitionedData = new ArrayList<ArrayList<double[]>>();
-        Classifier cl;
-        double fScore = 0;
-        
-        for(int i = 0; i<k; i++)
-            partitionedData.add(new ArrayList<double[]>());
-        
-        //partition the data into k array lists
-        //by adding the ith element in data to the i%kth array list
-        for(int i = 0; i < data.length; i++)
-            partitionedData.get(i%k).add(data[i]);
-        
-        for(int i = 0; i<k; i++)
-        {
-            cl = new Classifier(custom);
-            //load training data into classifier
-            for(int j = 0; j<k; j++)
-            {
-                if(i!=j)
-                    for(double[] d : partitionedData.get(j))
-                        cl.addData(d);
-            }
-            fScore += validate(cl,partitionedData.get(i));
-        }    
-        
-        return fScore / (double)k;
-            
-    }
-    
-    
-    
-    public static double kFoldValidation(double data[][],int k,boolean gaussian)
-    {
-        int interval = data.length / k;
-        //System.out.println(interval);
-        ArrayList<ArrayList<double[]>> partitionedData = new ArrayList<ArrayList<double[]>>();
-        Classifier cl;
-        double fScore = 0;
-        
-        for(int i = 0; i<k; i++)
-            partitionedData.add(new ArrayList<double[]>());
-        
-        //partition the data into k array lists
-        //by adding the ith element in data to the i%kth array list
-        for(int i = 0; i < data.length; i++)
-            partitionedData.get(i%k).add(data[i]);
-        
-        for(int i = 0; i<k; i++)
-        {
-            cl = new Classifier(gaussian);
-            //load training data into classifier
-            for(int j = 0; j<k; j++)
-            {
-                if(i!=j)
-                    for(double[] d : partitionedData.get(j))
-                        cl.addData(d);
-            }
-            fScore += validate(cl,partitionedData.get(i));
-        }    
-        
-        return fScore / (double)k;
-            
-    }
 
+    
+        public static void kFoldValidation(double data[][],int k,ProbabilityOptions options)
+    {
+        int interval = data.length / k;
+        double[][] results = new double[k][4];
+        //System.out.println(interval);
+        ArrayList<ArrayList<double[]>> partitionedData = new ArrayList<ArrayList<double[]>>();
+        Classifier cl;
+        double fScore = 0;
+        
+        for(int i = 0; i<k; i++)
+            partitionedData.add(new ArrayList<double[]>());
+        
+        //partition the data into k array lists
+        //by adding the ith element in data to the i%kth array list
+        for(int i = 0; i < data.length; i++)
+            partitionedData.get(i%k).add(data[i]);
+        
+        for(int i = 0; i<k; i++)
+        {
+            System.out.println("VALIDATION TEST NUMBER: " + (i+1));
+            cl = new Classifier(options);
+            //load training data into classifier
+            for(int j = 0; j<k; j++)
+            {
+                if(i!=j)
+                    for(double[] d : partitionedData.get(j))
+                        cl.addData(d);
+            }
+            results[i] = validate(cl,partitionedData.get(i));
+        }    
+        
+        double meanAccuracy = 0;
+        double meanFScore = 0;
+        double standardError=0;
+        System.out.println("aggregate results:\n      Accuracy   precision  recall     f-1 score");
+        for(int i = 0; i < k; i++)
+        {
+            System.out.printf("%3d %10f %10f %10f %10f\n",i,results[i][0],results[i][1],results[i][2],results[i][3]);
+            meanAccuracy += results[i][0];
+            meanFScore+=results[i][3];
+        }
+        
+        meanAccuracy /= (double)k;
+        meanFScore /= (double)k;
+        
+        //calculate standard eviation of accuracy:
+        for(int i = 0; i < k; i++)
+        {
+            standardError += (results[i][0] - meanAccuracy)*(results[i][0] - meanAccuracy);
+        }
+        standardError = Math.sqrt(standardError/(double)k);
+        standardError = standardError / Math.sqrt(k);
+        
+        
+        System.out.println("Mean Accuracy : " + meanAccuracy);
+        System.out.println("Standard Error: " + standardError);
+        System.out.println("Mean F1 Score : " + meanFScore);
+        //
+         
+        //
+        
+        return;
+            
+    }
+    
     
     
     /**
@@ -164,14 +178,14 @@ public class BayesCancerClassifier {
      * @param data
      * @return 
      */
-    public static double validate(Classifier cl, ArrayList<double[]> data)
+    public static double[] validate(Classifier cl, ArrayList<double[]> data)
     {
         int truePositive = 0,
             falsePositive = 0,
             trueNegative = 0,
             falseNegative = 0,
             prediction;
-        double precision,recall, actualDiagnosis;
+        double precision,recall, actualDiagnosis, accuracy,f1score;
         
         for(double[] d : data)
         {
@@ -186,8 +200,12 @@ public class BayesCancerClassifier {
         printConfusionMatric(truePositive,falsePositive,trueNegative,falseNegative);
         precision = (double)truePositive/(double)(truePositive + falsePositive);
         recall = (double)truePositive/(double)(truePositive + falseNegative);
-        System.out.printf("Precision: %f    Recall: %f\n",precision,recall);
-        return 2.*(precision * recall)/(precision + recall);        
+        accuracy = (double)(truePositive + trueNegative)/(double)(truePositive + trueNegative + falseNegative + falsePositive);
+        f1score = 2.*(precision * recall)/(precision + recall);
+        System.out.printf("Precision: %f    Recall: %f  \nAccuracy: %f     f-1 score: %f \n\n\n",precision,recall,accuracy,f1score);
+
+        
+        return new double[]{accuracy,precision,recall,f1score};
     }
 
     private static void printConfusionMatric(int truePositive, int falsePositive, int trueNegative, int falseNegative) {
