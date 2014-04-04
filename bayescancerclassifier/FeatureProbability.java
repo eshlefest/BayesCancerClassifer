@@ -7,10 +7,10 @@ package bayescancerclassifier;
 import java.util.ArrayList;
 
 /**
- *
+ * Abstract Class to be extended by classes that represent features
  * @author ryaneshleman
  */
-abstract class FeatureProbability 
+public abstract class FeatureProbability 
 {            
     public abstract double getProbability(double d);
     public abstract void addData(double d);

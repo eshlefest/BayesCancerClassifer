@@ -7,41 +7,33 @@ package bayescancerclassifier;
 import java.util.ArrayList;
 
 /**
- *  This Class manages the arrays of abstract probability estimators that are used to
+ *  This Class manages the arrays of abstract feature probability estimators that are used to
  *  cary out the Naive Bayes Classification Algorithm.  In order to allow for
  *  maximum flexibility, each attribute is represented as a class that maintains
  *  statistics about all instances of this attribute in the data set.  These classes
  *  subclass the 'FeatureProbability' class.  GaussianProbability class treats the data
  *  as a Gaussian distribution and BinnedProbability treats it is a bunch of bins.
  *  
- *  The types of distributions to be used can be indicated by a boolean value 
- *  given to the constructor.  'true' means use Gaussian distributions, false or
- *  nothing at all defaults to using binned distribution.
+ * The constructor is passed a ProbabilityOptions object that provides information
+ * about how the attributes should be modeled, ie Gaussian distribution or discretized
+ * into bins.
  * 
- *  A third option is to use provide an array of boolean values, a true at index 1
- *  indicates that the first attribute should be treated as a Gaussian distribution,
- *  a false indicates that the values should be binned.
+ * 
  * 
  * @author ryaneshleman
  */
-class Classifier 
+public class Classifier 
 {
     ArrayList<double[]> data = new ArrayList<double[]>();
-    //double[][] data;
-    //double[] meansPos,meansNeg,sDeviationsPos,sDeviationsNeg;
     FeatureProbability posProbs[];
     FeatureProbability negProbs[];
+
     boolean cleanData,initializedArrays;
     boolean useGaussian;
     int numPos=0,numNeg=0, binSize;
     ProbabilityOptions options;
     
     //default constructor uses bins
-    public Classifier()
-    {
-        initializedArrays = false;
-        useGaussian = false;
-    }
     
     public Classifier(ProbabilityOptions options)
     {
@@ -50,44 +42,21 @@ class Classifier
         this.useGaussian = options.useGaussian;
         if(options.isCustom)initCustom(options);
         if(options.selectedAttributes)selectAttributes(options.selectAttributes);
+        if(options.useCustomBinSizes)setCustomBinSizes(options.customBinSizes);
         
         
     }        
-    
-    //user can specify gaussian distribution or bins
-    public Classifier(boolean gaus)
-    {
-        initializedArrays = false;
-        useGaussian = gaus;
-    }
-    
-    //custom initialization
-    //public Classifier(ProbabilityOptions options)
-    //{
-    //    initCustom(options);    
-    //}        
-    
-    //again, defaults to bins
-    public Classifier(double[][] data) 
-    {
-        
-        useGaussian = false;
-        initializeArrays(data[1].length);
-        
-        
-        for(double[] d : data)
-            addData(d);
-    }
+
     
     /**
      * This initializes the array of FeatureProbabilites based on the
-     * custom array in the options object
-     * @param custom 
+     * customDistributionModels array in the options object
+     * @param customDistributionModels 
      */
     
     public void initCustom(ProbabilityOptions options)
     {        
-        boolean custom[] = options.custom;
+        boolean custom[] = options.customDistributionModels;
         int binSize = options.binSize;
         
         posProbs = new FeatureProbability[custom.length];
@@ -100,6 +69,11 @@ class Classifier
         }    
         initializedArrays = true;
     }
+    /**
+     * This method takes a boolean array indicating whether or not the attribute
+     * should be considered in the classifier  
+     * @param selected 
+     */
     
     public void selectAttributes(boolean selected[])
     {
@@ -115,6 +89,11 @@ class Classifier
             }            
         }    
     }        
+    
+    /**
+     * This method adds training data to the classifier
+     * @param d 
+     */
     
     public void addData(double[] d)
     {
@@ -135,17 +114,20 @@ class Classifier
         }
 
     }
-    
-    public void addData(double[][] d)
-    {
-        for(double[] data : d)
-            addData(d);
 
-    }
-    
+
+    /**
+     * This method performs the prediction.  it uses the Gaussian formula
+     * P(c|X) = P(X|c)P(c) / P(X) to predict the probability that the given data
+     * is positive and the probability that it is negative and predicts the class
+     * with the highest probability
+     * 
+     * @param d
+     * @return 
+     */
     public int predict(double[] d)
     {
-        
+        //initialize probability to P(c)
         double pPos = (double)numPos/((double)numPos + (double)numNeg),
                 pNeg= (double)numNeg/((double)numPos + (double)numNeg);
         
@@ -158,7 +140,6 @@ class Classifier
         for(int i = 2; i<32; i++)
             pNeg *= negProbs[i].getProbability(d[i]);
         
-        //System.out.println("" + d[1] + "  " + pPos + " " + pNeg);
         return (pPos>=pNeg ? 1 : 0);
             
     }
@@ -176,6 +157,23 @@ class Classifier
         }    
         initializedArrays = true;
     }
+
+    private void setCustomBinSizes(int customBinSizes[]) {
+        if(!initializedArrays)initializeArrays(customBinSizes.length);
+        
+        for(int i = 0; i<customBinSizes.length; i++)
+        {
+        if(posProbs[i] instanceof BinnedProbability)
+        {
+            ((BinnedProbability)posProbs[i]).setCustomBinSize(customBinSizes[i]);
+            ((BinnedProbability)negProbs[i]).setCustomBinSize(customBinSizes[i]);
+        }    
+
+        }    
+        initializedArrays = true;
+    }
+
+
     
     
     

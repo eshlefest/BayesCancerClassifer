@@ -12,7 +12,8 @@ import java.util.StringTokenizer;
 
 
 /**
- *
+ * This holds the main method used to execute the program which sets up a classifer
+ * and runs k-fold validation on it
  * @author ryaneshleman
  */
 public class BayesCancerClassifier {
@@ -22,52 +23,89 @@ public class BayesCancerClassifier {
      * 
      */
     public static void main(String[] args) throws FileNotFoundException {
-        String fileAddress = "wdbc.data";
+        String fileAddress = args[0];
         int NUM_DATA_POINTS = 569;
         int NUM_FEATURES = 32;
         int DEGREE_OF_VALIDATION = 10;
-        Classifier classifier;
+        int arg;
         double fScore;
+        Scanner sc = new Scanner(System.in);
+ 
+        System.out.println("Choose your distribution model:\nEnter 1 for all binned\nEnter 2 for all Gaussian\nEnter 3 to run the custom model");
+        arg = sc.nextInt();
         
         double data[][] = new double[NUM_DATA_POINTS][NUM_FEATURES];
-        int binnedData[][] = new int[NUM_DATA_POINTS][NUM_FEATURES];
-        
-        
         readData(data,fileAddress);
-                    
-        classifier = new Classifier(data);
+                   
 
-        boolean custom[] = new boolean[32];
-        boolean selected[] = new boolean[32];
+        /* this array is used to choose distribution models for each attribute
+         * if customDistributionModels[10] = true, then the 10th attribute will be treated as
+         * a gaussian attribute, false means the values will be put into equal sized bins
+         * bin size can be set using the options object
+         * 
+         */
+        boolean custom[] = new boolean[NUM_FEATURES];
         
-        for(int i = 0; i < custom.length; i++)
+        /*
+         * this array is used to indicate whether or not the specific attribute
+         * will be used in the classifier.  selected[10] = false means attribute 10
+         * will not be used in classification, true means it will
+         * 
+         */
+        boolean selected[] = new boolean[NUM_FEATURES];
+        
+        int customBinSizes[] = new int[NUM_FEATURES];
+        
+        for(int i = 0; i < NUM_FEATURES; i++)
         {
             selected[i] = custom[i] = true;
+            customBinSizes[i] = 25;
         }    
             
+        customBinSizes[5]=4;
+        //customBinSizes[2]=2;
+        customBinSizes[29]=4;
+        customBinSizes[15]=4;        
+        customBinSizes[24]=2;
+        customBinSizes[9]=2;
+        //customBinSizes[22]=3;
         
+        //for customDistributionModels true means follows a gaussian curve and false means binned
+        custom[9] = false;
+        custom[16] = false;
+
         
-        
-        custom[8] = false;
-        custom[15] = false;
-       // custom[12] = false;
-        //custom[14] = false;
-        //custom[9] = false;
-        //custom[10] = false;
-        ProbabilityOptions options = new ProbabilityOptions();
-        options.setCustom(custom);
-        options.setBinSize(7);
-        kFoldValidation(data,DEGREE_OF_VALIDATION,options);
-        //System.out.printf("After %d fold validation, f1-score=%f\n\n\n",DEGREE_OF_VALIDATION,fScore);
-        
-        options.reset();
-        options.useGaussian = true;
+        //selected attributes, false means they are ignored
         selected[5] = false;
         selected[10] = false;
-        options.setSelected(selected);
-        //kFoldValidation(data,DEGREE_OF_VALIDATION,options);
+        selected[6] = false;
+        selected[26] = false;
         
-        //System.out.printf("After %d fold validation, f1-score=%f\n",DEGREE_OF_VALIDATION,fScore);
+        ProbabilityOptions options1 = new ProbabilityOptions();
+        ProbabilityOptions options2 = new ProbabilityOptions();
+        ProbabilityOptions options3 = new ProbabilityOptions();
+
+        //options 1 is a discretized binned model
+        //options1.setBinSize(25);
+        //options1.setSelected(selected);
+        options1.setBinSize(customBinSizes);
+        if(arg == 1)kFoldValidation(data,DEGREE_OF_VALIDATION,options1);
+        
+        //options 2 uses a gaussian model
+        options2.useGaussian=true;
+        options2.setSelected(selected);
+        if(arg == 2)kFoldValidation(data,DEGREE_OF_VALIDATION,options2);
+
+        
+     
+        
+
+        options3.setSelected(selected);
+        options3.setCustomDistributionModel(custom);
+        
+        
+        if(arg == 3)kFoldValidation(data,DEGREE_OF_VALIDATION,options3);
+
             
         
     }
@@ -102,13 +140,21 @@ public class BayesCancerClassifier {
         }
         
     }
-
+        /**
+         * This method performs the k-fold validation of the classifier settings
+         * indicated in the options object.  It first partitions the data into
+         * k partitions then trains the classifier using k-1 partitions and validates
+         * the classifier using the remaining 1 partition
+         * 
+         * @param data
+         * @param k
+         * @param options 
+         */
     
         public static void kFoldValidation(double data[][],int k,ProbabilityOptions options)
     {
         int interval = data.length / k;
         double[][] results = new double[k][4];
-        //System.out.println(interval);
         ArrayList<ArrayList<double[]>> partitionedData = new ArrayList<ArrayList<double[]>>();
         Classifier cl;
         double fScore = 0;
@@ -121,10 +167,13 @@ public class BayesCancerClassifier {
         for(int i = 0; i < data.length; i++)
             partitionedData.get(i%k).add(data[i]);
         
+        
+        //  perform validations
         for(int i = 0; i<k; i++)
         {
             System.out.println("VALIDATION TEST NUMBER: " + (i+1));
             cl = new Classifier(options);
+            
             //load training data into classifier
             for(int j = 0; j<k; j++)
             {
@@ -135,6 +184,8 @@ public class BayesCancerClassifier {
             results[i] = validate(cl,partitionedData.get(i));
         }    
         
+        
+        //Print out results
         double meanAccuracy = 0;
         double meanFScore = 0;
         double standardError=0;
@@ -149,22 +200,20 @@ public class BayesCancerClassifier {
         meanAccuracy /= (double)k;
         meanFScore /= (double)k;
         
-        //calculate standard eviation of accuracy:
+        //calculate standard deviation of accuracy:
         for(int i = 0; i < k; i++)
         {
             standardError += (results[i][0] - meanAccuracy)*(results[i][0] - meanAccuracy);
         }
         standardError = Math.sqrt(standardError/(double)k);
+        //calculate standard error
         standardError = standardError / Math.sqrt(k);
         
         
         System.out.println("Mean Accuracy : " + meanAccuracy);
         System.out.println("Standard Error: " + standardError);
         System.out.println("Mean F1 Score : " + meanFScore);
-        //
-         
-        //
-        
+
         return;
             
     }
@@ -173,7 +222,8 @@ public class BayesCancerClassifier {
     
     /**
      * this method tests the pretrained classifier against the test data
-     * then prints a confusion matrix.  it returns the f-1 score
+     * then prints a confusion matrix.  it returns an array of the results
+     * in for form of {accuracy,precision,recall,f-1score}
      * @param cl
      * @param data
      * @return 
@@ -187,6 +237,7 @@ public class BayesCancerClassifier {
             prediction;
         double precision,recall, actualDiagnosis, accuracy,f1score;
         
+        //make predictions on each data point and record results
         for(double[] d : data)
         {
             prediction = cl.predict(d);
@@ -197,18 +248,27 @@ public class BayesCancerClassifier {
             else if(prediction == 0 && actualDiagnosis == 1) falseNegative++;
         }
         
-        printConfusionMatric(truePositive,falsePositive,trueNegative,falseNegative);
+        printConfusionMatrix(truePositive,falsePositive,trueNegative,falseNegative);
+        
         precision = (double)truePositive/(double)(truePositive + falsePositive);
         recall = (double)truePositive/(double)(truePositive + falseNegative);
         accuracy = (double)(truePositive + trueNegative)/(double)(truePositive + trueNegative + falseNegative + falsePositive);
         f1score = 2.*(precision * recall)/(precision + recall);
-        System.out.printf("Precision: %f    Recall: %f  \nAccuracy: %f     f-1 score: %f \n\n\n",precision,recall,accuracy,f1score);
+        System.out.printf("Precision: %f    Recall:    %f  \nAccuracy:  %f    f-1 score: %f \n\n\n",precision,recall,accuracy,f1score);
 
         
         return new double[]{accuracy,precision,recall,f1score};
     }
 
-    private static void printConfusionMatric(int truePositive, int falsePositive, int trueNegative, int falseNegative) {
+    /**
+     * This is a helper method that prints the confusion matrix based on input
+     * 
+     * @param truePositive
+     * @param falsePositive
+     * @param trueNegative
+     * @param falseNegative 
+     */
+    private static void printConfusionMatrix(int truePositive, int falsePositive, int trueNegative, int falseNegative) {
         System.out.println("             | + Diagnosis   | - Diagnosis    ");
         System.out.println("--------------------------------------------------");
         System.out.printf("+ Prediction |  %10d   |  %10d\n",truePositive,falsePositive);
