@@ -23,15 +23,24 @@ public class BayesCancerClassifier {
      * 
      */
     public static void main(String[] args) throws FileNotFoundException {
-        String fileAddress = args[0];
+        String fileAddress = "wdbc.data";
         int NUM_DATA_POINTS = 569;
         int NUM_FEATURES = 32;
         int DEGREE_OF_VALIDATION = 10;
         int arg;
         double fScore;
         Scanner sc = new Scanner(System.in);
+        
+        if(args.length == 1) fileAddress = args[0];
  
-        System.out.println("Choose your distribution model:\nEnter 1 for all binned\nEnter 2 for all Gaussian\nEnter 3 to run the custom model");
+        System.out.println("Choose your distribution model:");
+        System.out.println("Enter 1 for all binned");
+        System.out.println("Enter 2 for Gaussian Distribution");
+        System.out.println("Enter 3 for Chi Squared Distribution");
+        System.out.println("Enter 4 for a combination of Gaussian and Binned (optimum)");
+        System.out.println("Enter 5 for a combination of Gaussian, Binned, and Chi Squared");
+        System.out.println("Selection: ");
+        
         arg = sc.nextInt();
         
         double data[][] = new double[NUM_DATA_POINTS][NUM_FEATURES];
@@ -44,7 +53,11 @@ public class BayesCancerClassifier {
          * bin size can be set using the options object
          * 
          */
-        boolean custom[] = new boolean[NUM_FEATURES];
+        int allBinned[] = new int[NUM_FEATURES];
+        int allGaussian[] = new int[NUM_FEATURES];
+        int mixedBinnedGaussian[] = new int[NUM_FEATURES];
+        int allChiSquare[] = new int[NUM_FEATURES];
+        int mixedAll[] = new int[NUM_FEATURES];
         
         /*
          * this array is used to indicate whether or not the specific attribute
@@ -56,24 +69,24 @@ public class BayesCancerClassifier {
         
         int customBinSizes[] = new int[NUM_FEATURES];
         
+        
         for(int i = 0; i < NUM_FEATURES; i++)
         {
-            selected[i] = custom[i] = true;
-            customBinSizes[i] = 25;
+            selected[i] = true;
+            allBinned[i] = 0;           //this array indicates all attributes should be binned
+            allGaussian[i] = 1;         //this array is now all Gaussian
+            mixedBinnedGaussian[i] = 1; //all Gaussian now, will be updated further down
+            allChiSquare[i] = 2;        //all attributes will be treated as a chi squared distribution
+            mixedAll[i] = 1;            //initialized to Gaussian, will be customized further down
+            customBinSizes[i] = 25;     //initialize bin sizes
         }    
-            
+        
+        //Set the Custom Bin Sizes
         customBinSizes[5]=4;
-        //customBinSizes[2]=2;
         customBinSizes[29]=4;
         customBinSizes[15]=4;        
         customBinSizes[24]=2;
         customBinSizes[9]=2;
-        //customBinSizes[22]=3;
-        
-        //for customDistributionModels true means follows a gaussian curve and false means binned
-        custom[9] = false;
-        custom[16] = false;
-
         
         //selected attributes, false means they are ignored
         selected[5] = false;
@@ -84,30 +97,45 @@ public class BayesCancerClassifier {
         ProbabilityOptions options1 = new ProbabilityOptions();
         ProbabilityOptions options2 = new ProbabilityOptions();
         ProbabilityOptions options3 = new ProbabilityOptions();
+        ProbabilityOptions options4 = new ProbabilityOptions();
+        ProbabilityOptions options5 = new ProbabilityOptions();
 
-        //options 1 is a discretized binned model
-        //options1.setBinSize(25);
-        //options1.setSelected(selected);
-        options1.setBinSize(customBinSizes);
-        if(arg == 1)kFoldValidation(data,DEGREE_OF_VALIDATION,options1);
-        
-        //options 2 uses a gaussian model
-        options2.useGaussian=true;
-        options2.setSelected(selected);
-        if(arg == 2)kFoldValidation(data,DEGREE_OF_VALIDATION,options2);
+        switch(arg){
+            case 1:
+                options1.setBinSize(customBinSizes);
+                options1.setCustomDistributionModel(allBinned);
+                kFoldValidation(data,DEGREE_OF_VALIDATION,options1);
+                break;
+            case 2:
+                options2.setSelected(selected);
+                options2.setCustomDistributionModel(allGaussian);
+                kFoldValidation(data,DEGREE_OF_VALIDATION,options2);
+                break;
+            case 3:
+                options3.setSelected(selected);
+                options3.setCustomDistributionModel(allChiSquare);
+                kFoldValidation(data,DEGREE_OF_VALIDATION,options3);
+                break;
+            case 4:
+                mixedBinnedGaussian[9] = 0;
+                mixedBinnedGaussian[16] = 0;
+                options4.setSelected(selected);
+                options4.setCustomDistributionModel(mixedBinnedGaussian);
+                kFoldValidation(data,DEGREE_OF_VALIDATION,options4);
+                break;
+            case 5:
+                mixedAll[13] = 2;   //set 13,18,19 to Chi Squared
+                mixedAll[18] = 2;
+                mixedAll[19] = 2;
+                mixedAll[9] = 0;    //  set 9 and 16 to binned
+                mixedAll[16] = 0;
+                options5.setSelected(selected);
+                options5.setCustomDistributionModel(mixedAll);
+                kFoldValidation(data,DEGREE_OF_VALIDATION,options5);
+                break;       
+        }
 
-        
-     
-        
-
-        options3.setSelected(selected);
-        options3.setCustomDistributionModel(custom);
-        
-        
-        if(arg == 3)kFoldValidation(data,DEGREE_OF_VALIDATION,options3);
-
-            
-        
+           
     }
 
     /**

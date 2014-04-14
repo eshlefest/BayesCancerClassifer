@@ -13,7 +13,7 @@ public class ProbabilityOptions {
     boolean useGaussian = false;
     boolean isCustom = false;
     boolean selectedAttributes = false;
-    boolean customDistributionModels[];
+    int customDistributionModels[];
     boolean selectAttributes[];
     boolean useCustomBinSizes = false;
     int binSize = 10;
@@ -34,7 +34,7 @@ public class ProbabilityOptions {
      * distribution of the feature, true is Gaussian, false is binned
      * @param custom 
      */
-    public void setCustomDistributionModel(boolean[] custom)
+    public void setCustomDistributionModel(int[] custom)
     {
         this.customDistributionModels = custom;
         isCustom = true;

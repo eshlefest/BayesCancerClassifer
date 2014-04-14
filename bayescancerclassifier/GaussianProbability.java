@@ -36,7 +36,6 @@ public class GaussianProbability extends FeatureProbability {
         if(!active)return 1;
         
         if(!clean)computeValues();
-        //System.out.println("standardDEviation: " + standardDeviation);
         return computeProbability(d,mean,standardDeviation);
     }
 
@@ -54,13 +53,10 @@ public class GaussianProbability extends FeatureProbability {
     }
 
     private void computeValues() {
-        //System.out.println("computeValues: sum " + sum);
         mean = sum / (double)data.size();
         standardDeviation = 0.;
         for(int i = 0; i< data.size(); i++)
             standardDeviation += ((mean - data.get(i))*(mean - data.get(i)));
-            
-        //System.out.println("variance mean" + standardDeviation + " " + mean);
         
         standardDeviation = Math.sqrt((standardDeviation / (double)data.size()));
         

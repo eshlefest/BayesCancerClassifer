@@ -32,43 +32,21 @@ public class Classifier
     boolean useGaussian;
     int numPos=0,numNeg=0, binSize;
     ProbabilityOptions options;
-    
-    //default constructor uses bins
+
     
     public Classifier(ProbabilityOptions options)
     {
         this.options = options;
         binSize = options.binSize;
         this.useGaussian = options.useGaussian;
-        if(options.isCustom)initCustom(options);
+        initalizeArrays(this.options);
         if(options.selectedAttributes)selectAttributes(options.selectAttributes);
         if(options.useCustomBinSizes)setCustomBinSizes(options.customBinSizes);
         
         
     }        
 
-    
-    /**
-     * This initializes the array of FeatureProbabilites based on the
-     * customDistributionModels array in the options object
-     * @param customDistributionModels 
-     */
-    
-    public void initCustom(ProbabilityOptions options)
-    {        
-        boolean custom[] = options.customDistributionModels;
-        int binSize = options.binSize;
-        
-        posProbs = new FeatureProbability[custom.length];
-        negProbs = new FeatureProbability[custom.length];
-        
-        for(int i = 0; i<custom.length; i++)
-        {
-        posProbs[i] = (custom[i]?new GaussianProbability():new BinnedProbability(binSize));
-        negProbs[i] = (custom[i]?new GaussianProbability():new BinnedProbability(binSize));
-        }    
-        initializedArrays = true;
-    }
+
     /**
      * This method takes a boolean array indicating whether or not the attribute
      * should be considered in the classifier  
@@ -77,9 +55,7 @@ public class Classifier
     
     public void selectAttributes(boolean selected[])
     {
-        
-        
-        if(!initializedArrays)initializeArrays(selected.length);
+
         for(int i = 0; i < selected.length;i++)
         {
             if(!selected[i])
@@ -97,8 +73,7 @@ public class Classifier
     
     public void addData(double[] d)
     {
-        if(!initializedArrays)
-            initializeArrays(d.length);
+        
         
         if(d[1]==1)
         {    
@@ -144,23 +119,8 @@ public class Classifier
             
     }
 
-    private void initializeArrays(int length) 
-    {
-        
-        posProbs = new FeatureProbability[length];
-        negProbs = new FeatureProbability[length];
-        
-        for(int i = 0; i<length; i++)
-        {
-        posProbs[i] = (useGaussian?new GaussianProbability():new BinnedProbability(binSize));
-        negProbs[i] = (useGaussian?new GaussianProbability():new BinnedProbability(binSize));
-        }    
-        initializedArrays = true;
-    }
-
     private void setCustomBinSizes(int customBinSizes[]) {
-        if(!initializedArrays)initializeArrays(customBinSizes.length);
-        
+
         for(int i = 0; i<customBinSizes.length; i++)
         {
         if(posProbs[i] instanceof BinnedProbability)
@@ -170,6 +130,31 @@ public class Classifier
         }    
 
         }    
+        initializedArrays = true;
+    }
+
+    public void initalizeArrays(ProbabilityOptions options) 
+    {
+        posProbs = new FeatureProbability[options.customDistributionModels.length];
+        negProbs = new FeatureProbability[options.customDistributionModels.length];
+        
+        for(int i = 0; i < options.customDistributionModels.length;i++)
+        {
+            switch (options.customDistributionModels[i]){
+                    case 0: 
+                        posProbs[i] = new BinnedProbability(binSize);
+                        negProbs[i] = new BinnedProbability(binSize);
+                        break;
+                    case 1:
+                        posProbs[i] = new GaussianProbability();
+                        negProbs[i] = new GaussianProbability();
+                        break;
+                    case 2:
+                        posProbs[i] = new ChiSquareProbability();
+                        negProbs[i] = new ChiSquareProbability();
+                        break;         
+            }
+        }
         initializedArrays = true;
     }
 
